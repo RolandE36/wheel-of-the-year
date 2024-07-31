@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script type="text/javascript" src="http://www.suchelu.it/astrojs/astrojs.js"></script>
+    <title>Колесо Року</title>
+    
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Gabriela&display=swap" rel="stylesheet">
+
+	<style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        svg {
+            width: 800px;
+            height: 800px;
+        }
+		
+		body {
+		  font-family: "Gabriela", serif;
+		  font-weight: 400;
+		  font-style: normal;
+		}
+		
+		.holiday-date {
+			stroke: #000000;
+			stroke-width: 1px;
+			stroke-linecap: butt;
+			stroke-linejoin: miter;
+		}		
+    </style>
+</head>
+<body>
+    <svg id="wheelOfYearSvg"></svg>
+    <script>
+	var date_eqsol = eqsol(new Date().getFullYear()); // calculates the julian day for the dates.
+
+	// Retrieves the results from the Array: date_eqsol[0,..3]
+    var njd1=date_eqsol[0];    //  March Equinox. 
+    var njd2=date_eqsol[1];    //  June Solstice. 
+    var njd3=date_eqsol[2];    //  September Equinox.
+    var njd4=date_eqsol[3];    //  December Solstice.
+
+    // Calendar dates
+
+    // March Equinox
+	var data1=jd_data(njd1);                                      // calendar date1.
+    var dataf1=sc_day_hm(data1[0])+" : "+data1[1]+" : "+data1[2]; // formatting of the date.
+
+	// June Solstice
+    var data2=jd_data(njd2);                                      // calendar date2. 
+    var dataf2=sc_day_hm(data2[0])+" : "+data2[1]+" : "+data2[2]; // formatting of the date.
+
+	// September Equinox
+    var data3=jd_data(njd3);                                      // calendar date3. 
+    var dataf3=sc_day_hm(data3[0])+" : "+data3[1]+" : "+data3[2]; // formatting of the date.
+
+    // December Solstice
+	var data4=jd_data(njd4);                                      // calendar date4.
+    var dataf4=sc_day_hm(data4[0])+" : "+data4[1]+" : "+data4[2]; // formatting of the date
+
+	const svg = document.getElementById('wheelOfYearSvg');
+	const width = svg.clientWidth;
+	const height = svg.clientHeight;
+	const centerX = width / 2;
+	const centerY = height / 2;
+	const radius = Math.min(width, height) / 2 - 50;
+	
+	const monthNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
+	//const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+	
+	const holidays = [
+		{ name: "Юль", date: new Date(Date.UTC(new Date().getFullYear(), 11, parseInt(data4[0]))) },
+		{ name: "Імболк", date: new Date(Date.UTC(new Date().getFullYear(), 1, 1)) },
+		{ name: "Остара", date: new Date(Date.UTC(new Date().getFullYear(), 2, parseInt(data1[0]))) },
+		{ name: "Бельтайн", date: new Date(Date.UTC(new Date().getFullYear(), 4, 1)) },
+		{ name: "Літа", date: new Date(Date.UTC(new Date().getFullYear(), 5, parseInt(data2[0]))) },
+		{ name: "Лугнасад", date: new Date(Date.UTC(new Date().getFullYear(), 7, 1)) },
+		{ name: "Мабон", date: new Date(Date.UTC(new Date().getFullYear(), 8, parseInt(data3[0]))) },
+		{ name: "Самайн", date: new Date(Date.UTC(new Date().getFullYear(), 9, 31)) }
+	];	
+
+	const colors = [
+		'#0779b2',
+		'#149ec3',
+		'#de94af',
+		'#06af8d',
+		'#533583',
+		'#06965d',
+		'#099622',
+		'#067071',
+		'#dfab07',
+		'#de8c0e',
+		'#db6b3a',
+		'#083c7a',
+	];
+
+	function getDaysInYear(year) {
+		return ((year % 4 === 0 && year % 100 > 0) || year % 400 == 0) ? 366 : 365;
+	}
+
+	const daysInYear = getDaysInYear(new Date().getFullYear());
+	const startOfYear = new Date(Date.UTC(new Date().getFullYear(), 0, 1));
+		
+	
+	function getInigialAngle() {
+		const dayOfYear = Math.floor((holidays[0].date - startOfYear) / (24 * 60 * 60 * 1000));
+		return (dayOfYear - daysInYear / 4) * (2 * Math.PI / daysInYear);
+	}
+	
+	const initialAngle = - getInigialAngle() - Math.PI / 2;
+
+	function createSvgElement(tag, attributes) {
+		const elem = document.createElementNS("http://www.w3.org/2000/svg", tag);
+		for (let attr in attributes) {
+			elem.setAttribute(attr, attributes[attr]);
+		}
+		return elem;
+	}
+
+	function describeArc(x, y, radius, spread, startAngle, endAngle){
+		var innerStart = polarToCartesian(x, y, radius, endAngle);
+		var innerEnd = polarToCartesian(x, y, radius, startAngle);
+		var outerStart = polarToCartesian(x, y, radius + spread, endAngle);
+		var outerEnd = polarToCartesian(x, y, radius + spread, startAngle);
+		var largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+		var d = [
+			"M", outerStart.x, outerStart.y,
+			"A", radius + spread, radius + spread, 0, largeArcFlag, 0, outerEnd.x, outerEnd.y,
+			"L", innerEnd.x, innerEnd.y, 
+			"A", radius, radius, 0, largeArcFlag, 1, innerStart.x, innerStart.y, 
+			"L", outerStart.x, outerStart.y, "Z"
+		].join(" ");
+
+		return d;
+	}
+
+	function polarToCartesian(centerX, centerY, radius, angleInRadians) {
+	  return {
+		x: centerX + (radius * Math.cos(angleInRadians)),
+		y: centerY + (radius * Math.sin(angleInRadians))
+	  };
+	}
+	
+	function datediff(first, second) {        
+		return Math.round((second - first) / (1000 * 60 * 60 * 24));
+	}
+	
+	///
+	/// Draw Border
+	///
+	function drawCircle() {
+		const circle = createSvgElement('circle', {
+			cx: centerX,
+			cy: centerY,
+			r: radius,
+			stroke: 'black',
+			'stroke-width': 2,
+			fill: 'none'
+		});
+		svg.appendChild(circle);
+	}
+	
+	///
+	/// Draw Background for months
+	///
+	function drawMonthsArc() {
+		let dayCounter = 0;
+		for (let m = 0; m < 12; m++) {
+			var month = new Date(new Date().getFullYear(), m+1, 0);
+
+			// <path id="lineAC" d="M 100 350 q 150 -300 300 0" stroke="blue" stroke-width="4" fill="none"/>
+			const angle1 = (dayCounter - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+			dayCounter += month.getDate();
+			const angle2 = (dayCounter - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+			
+			
+			const arc = createSvgElement('path', {
+				stroke: 'none',
+				"stroke-width": "1",
+				fill: colors[m] + '99',
+				d: describeArc(centerX, centerY, (radius * 0.80), radius * 0.1, angle1, angle2)
+			});
+			svg.appendChild(arc);		
+		}
+	}
+
+	///
+	/// Draw monthsnames
+	///
+	function drawMonths() {
+		for (let i = 0; i < 12; i++) {
+			const angle = (i - 2.5) * (2 * Math.PI / 12) + initialAngle;
+			const x = centerX + Math.cos(angle) * (radius * 0.85);
+			const y = centerY + Math.sin(angle) * (radius * 0.85);
+			
+			let rotation = (i+1) * (360 / 12) - 4;
+			if (i > 2 && i < 8) rotation += 360 / 2;
+			
+			const text = createSvgElement('text', {
+				x: 0,
+				y: 0,
+				'text-anchor': 'middle',
+				'dominant-baseline': 'middle',
+				'font-size': '0.8rem',
+				fill: 'black',
+				transform: "translate("+x+","+y+") rotate("+rotation+")"
+			});
+			text.textContent = monthNames[i];
+			svg.appendChild(text);
+		}
+	}
+
+	///
+	/// Draw dots for each day
+	///
+	function drawDays() {
+		let dayCounter = 0;
+		for (let m = 0; m < 12; m++) {
+			var d = new Date(new Date().getFullYear(), m + 1, 0);
+			for (let i = 0; i < d.getDate(); i++) {
+				const angle = (dayCounter - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+				const x = centerX + Math.cos(angle) * (radius * 0.8 - 0.5);
+				const y = centerY + Math.sin(angle) * (radius * 0.8 - 0.5);
+				const dayCircle = createSvgElement('circle', {
+					cx: x,
+					cy: y,
+					r: 1,
+					fill: 'black'
+				});
+				svg.appendChild(dayCircle);
+				
+				dayCounter++;
+			}
+		}
+	}
+
+	///
+	/// Draw dots for each day
+	///
+	function drawHolidays() {
+		for (let i in holidays) {
+			let holiday = holidays[i];		
+			
+			const dayOfYear = Math.floor((holiday.date - startOfYear) / (24 * 60 * 60 * 1000));
+			const angle = (dayOfYear - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+			
+			let x = centerX + Math.cos(angle) * (radius * 0.95);
+			let y = centerY + Math.sin(angle) * (radius * 0.95);
+			
+			let rotation = (i) * (360 / 8);
+			// readability correction
+			if (i > 2 && i < 6) rotation += 360 / 2;
+			// correction because months not aligned properly
+			if (i % 2 == 1) rotation -= 4;
+			
+			// Holiday Name
+			const text = createSvgElement('text', {
+				x: 0,
+				y: 0,
+				'text-anchor': 'middle',
+				'dominant-baseline': 'middle',
+				'font-size': 14,
+				fill: 'black',
+				transform: "translate("+x+","+y+") rotate("+rotation+")"
+			});
+			text.textContent = holiday.name;
+			svg.appendChild(text);
+			
+			// Holiday Date
+			x = centerX + Math.cos(angle) * (radius * 0.82);
+			y = centerY + Math.sin(angle) * (radius * 0.82);			
+			const date = createSvgElement('text', {
+				x: 0,
+				y: 0,
+				'text-anchor': 'middle',
+				'dominant-baseline': 'middle',
+				'font-size': 10,
+				fill: 'red',
+				transform: "translate("+x+","+y+") rotate("+rotation+")",
+				'class': 'holiday-date'
+			});
+			date.textContent = holiday.date.getDate();
+			svg.appendChild(date);
+			
+			x = centerX + Math.cos(angle) * (radius * 0.8);
+			y = centerY + Math.sin(angle) * (radius * 0.8);
+			const holidayCircle = createSvgElement('circle', {
+				cx: x,
+				cy: y,
+				r: 3,
+				fill: 'red'				
+			});
+			svg.appendChild(holidayCircle);
+			
+			// Holiday Arrow
+			const line = createSvgElement('line', {
+				x1: centerX,
+				y1: centerY,
+				x2: x,
+				y2: y,
+				stroke: 'red',
+				'stroke-width': 1
+			});
+			svg.appendChild(line);
+		}
+	}
+	
+	///
+	/// Draw Сhristmas Star
+	///
+	function drawStar() {
+		for (let l = 0; l < 2; l++) {
+			for (let i = 0; i < 8; i++) {
+				
+				let holiday = holidays[i];
+				let holidayBefore = i > 0 ? holidays[i-1] : holidays[7];
+				let holidayAfter  = i < 7 ? holidays[i+1] : holidays[0];
+				
+				let dayOfYear = Math.floor((holiday.date - startOfYear) / (24 * 60 * 60 * 1000));
+				let dayOfYearBefore = Math.floor((holidayBefore.date - startOfYear) / (24 * 60 * 60 * 1000));
+				let dayOfYearAfter = Math.floor((holidayAfter.date - startOfYear) / (24 * 60 * 60 * 1000));
+
+				let angle = (dayOfYear - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+				
+				let compensation  = 0;
+				if (Math.abs(dayOfYear - dayOfYearBefore) > 150) compensation = daysInYear; // in case if dates in different years
+				let angleBefore = ((compensation + dayOfYear + dayOfYearBefore) / 2 - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+				
+				compensation  = 0;
+				if (Math.abs(dayOfYear - dayOfYearAfter) > 150) compensation = daysInYear; // in case if dates in different years
+				let angleAfter = ((compensation + dayOfYear + dayOfYearAfter) / 2 - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+				
+				let angleNextHoliday = (dayOfYearAfter - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+				
+				let points = [];			
+				
+				if (l == 0) {
+					// Background layer
+				
+					// peak
+					points.push(centerX + Math.cos(angleAfter) * (radius * 0.45));
+					points.push(centerY + Math.sin(angleAfter) * (radius * 0.45));
+
+					// left
+					points.push(centerX + Math.cos(angle) * (radius * 0.25));
+					points.push(centerY + Math.sin(angle) * (radius * 0.25));
+					
+					// center
+					points.push(centerX);
+					points.push(centerY);
+					
+					// right
+					points.push(centerX + Math.cos(angleNextHoliday) * (radius * 0.25));
+					points.push(centerY + Math.sin(angleNextHoliday) * (radius * 0.25));
+					
+					// <polygon points="100,10 150,190 50,190" style="fill:lime;stroke:purple;stroke-width:3" />
+					const polygonBack = createSvgElement('polygon', {
+						points: points.join(","),
+						stroke: 'red',
+						'stroke-width': 1,
+						style: "fill:#ff0000a8;stroke:black;stroke-width:1"
+					});
+					svg.appendChild(polygonBack);
+				} else {
+					// Front layer
+				
+					// peak
+					points.push(centerX + Math.cos(angle) * (radius * 0.8));
+					points.push(centerY + Math.sin(angle) * (radius * 0.8));
+					
+					// left
+					points.push(centerX + Math.cos(angleBefore) * (radius * 0.25));
+					points.push(centerY + Math.sin(angleBefore) * (radius * 0.25));
+					
+					// center
+					points.push(centerX);
+					points.push(centerY);
+					
+					// right
+					points.push(centerX + Math.cos(angleAfter) * (radius * 0.25));
+					points.push(centerY + Math.sin(angleAfter) * (radius * 0.25));
+					
+					// <polygon points="100,10 150,190 50,190" style="fill:lime;stroke:purple;stroke-width:3" />
+					const polygon = createSvgElement('polygon', {
+						points: points.join(","),
+						stroke: 'red',
+						'stroke-width': 1,
+						style: "fill:red;stroke:black;stroke-width:1",
+						'z-index': 1
+					});
+					svg.appendChild(polygon);
+				}
+			}
+		}
+	}
+	
+	///
+	/// Draw Current Day
+	///
+	function drawToday() {		
+		const today = new Date();
+		const dayOfYear = Math.floor((today - startOfYear) / (24 * 60 * 60 * 1000));
+		const angle = (dayOfYear - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+		
+		const line = createSvgElement('line', {
+			x1: centerX + Math.cos(angle) * (radius * 0.66),
+			y1: centerY + Math.sin(angle) * (radius * 0.66),
+			x2: centerX + Math.cos(angle) * (radius * 0.92),
+			y2: centerY + Math.sin(angle) * (radius * 0.92),
+			stroke: '#FF000055',
+			'stroke-width': 2,
+			//stroke: "black"
+		});
+		svg.appendChild(line);
+		
+		for (let i = -4; i <= 3; i++) {
+			let x = centerX + Math.cos(angle) * (radius * 0.8 + i * radius / 30);
+			let y = centerY + Math.sin(angle) * (radius * 0.8 + i * radius / 30);
+			const todayCircle = createSvgElement('circle', {
+				cx: x,
+				cy: y,
+				r: Math.max(0.5, 3 - Math.abs(i)),
+				fill: '#FF000099',
+				stroke: "black",
+				'stroke-width': 0.5
+			});
+			svg.appendChild(todayCircle);		
+		}		
+	}
+	
+	function zoom() {		
+		const today = new Date();
+		const dayOfYear = Math.floor((today - startOfYear) / (24 * 60 * 60 * 1000));
+		const angle = (dayOfYear - daysInYear / 4) * (2 * Math.PI / daysInYear) + initialAngle;
+		let x = centerX + Math.cos(angle) * (radius);
+		let y = centerY + Math.sin(angle) * (radius);
+		
+		let x1 = x - radius / 4;
+		let x2 = x + radius / 4;
+		let y1 = y - radius / 4;
+		let y2 = y + radius / 4;
+		
+		svg.setAttribute("viewBox", x1 + " " + y1 + " " + x2 + " " + y2);
+		// https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
+	}
+
+	drawHolidays();
+	drawMonthsArc();		
+	drawStar();
+	drawDays();	
+	drawToday();
+	drawMonths();
+	drawCircle();
+	
+	//zoom();
+	
+	</script>
+</body>
+</html>
